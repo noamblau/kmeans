@@ -4,22 +4,17 @@ AMOUNT = 0
 SUM = 1
 
 
-def read_file():
+def read_vectors_from_file():
     vectors = []
     while True:
         vector = []
         try:
-            # i= 0
             for num in input().strip('\n').split(','):
-                # i+=1;
                 vector.append(float(num))
-                # if i<4:
-                #     print(num)
         except EOFError:
             break
         if len(vector) != 0:
             vectors.append(vector)
-    # print(vectors)
     return vectors
 
 
@@ -38,6 +33,16 @@ def init_centroids(vectors, k, dim):
         for j in range(dim):
             cent.append(vectors[i][j])
         centroids.append(cent)
+    return centroids
+
+
+def average_vector(vectors, dim, n):
+    centroids = init_centroids(vectors, 1, dim)
+    for i in range(1, n):
+        for j in range(dim):
+            centroids[0][j] += vectors[i][j]
+    for k in range(dim):
+        centroids[0][k] = centroids[0][k]/n
     return centroids
 
 
@@ -64,9 +69,9 @@ def reset_clusters(clusters, dim, k):
 
 def calculate_clusters(vectors, centroids, clusters, dim, k):
     for vector in vectors:
-        min_distance = float('inf')
+        min_distance = distance_sq(vector, centroids[0])
         closest_cluster = 0
-        for i in range(k):
+        for i in range(1, k):
             distance = distance_sq(vector, centroids[i])
             if distance < min_distance:
                 min_distance = distance
@@ -86,8 +91,6 @@ def update_centroids(clusters, centroids, dim, k):
             if centroids[i][j] != new_cor:
                 changed = True
                 centroids[i][j] = new_cor
-    # print(centroids)
-    # print(changed)
     return changed
 
 
@@ -97,35 +100,37 @@ def print_vector(v):
     print("{0:.4f}".format(v[len(v)-1]))
 
 
-def print_vector_delete(v):
-    for i in range(len(v)-1):
-        [n, q] = str(v[i]).split(".")
-        print(n + "." + q[:4], end=",")
-    [n, q] = str(v[len(v)-1]).split(".")
-    print(n + "." + q[:4])
-
-
 if __name__ == "__main__":
-    vectors_list = read_file()
-    k_val = int(sys.argv[1])
+    if len(sys.argv) > 3 or len(sys.argv) < 2:
+        raise Exception("Invalid number of arguments")
+    vectors_list = read_vectors_from_file()
+    try:
+        k_val = int(sys.argv[1])
+    except ValueError:
+        raise Exception("Invalid k")
     dimension = get_vectors_dim(vectors_list)
     max_iter = 200
     if len(sys.argv) == 3:
-        max_iter = int(sys.argv[2])
-    clusters_list = init_clusters(k_val)
-    # print(clusters_list)
-    centroids_list = init_centroids(vectors_list, k_val, dimension)
-    # print(centroids_list)
-    iter_num = 0
-    centroids_changed = True
-    while (iter_num < max_iter) and centroids_changed:
-        calculate_clusters(vectors_list, centroids_list, clusters_list, dimension, k_val)
-        centroids_changed = update_centroids(clusters_list, centroids_list, dimension, k_val)
-        # print(clusters_list)
-        # print(centroids_list)
-        reset_clusters(clusters_list, dimension, k_val)
-        iter_num += 1
-    # print(iter_num)
-    # print(len(centroids_list))
+        try:
+            max_iter = int(sys.argv[2])
+        except ValueError:
+            raise Exception("Invalid number of iterations")
+    v_num = get_vectors_num(vectors_list)
+    if k_val <= 0 or k_val >= v_num:
+        raise Exception("Invalid k")
+    if max_iter <= 0:
+        raise Exception("Invalid number of iterations")
+    if k_val != 1:
+        clusters_list = init_clusters(k_val)
+        centroids_list = init_centroids(vectors_list, k_val, dimension)
+        iter_num = 0
+        centroids_changed = True
+        while (iter_num < max_iter) and centroids_changed:
+            calculate_clusters(vectors_list, centroids_list, clusters_list, dimension, k_val)
+            centroids_changed = update_centroids(clusters_list, centroids_list, dimension, k_val)
+            reset_clusters(clusters_list, dimension, k_val)
+            iter_num += 1
+    else:
+        centroids_list = average_vector(vectors_list, dimension, v_num)
     for centroid in centroids_list:
         print_vector(centroid)
